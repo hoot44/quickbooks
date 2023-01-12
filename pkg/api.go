@@ -12,27 +12,16 @@ import (
 	"strings"
 )
 
-type RefreshToken struct {
-	TokenType              string `json:"token_type"`
-	AccessToken            string `json:"access_token"`
-	RefreshToken           string `json:"refresh_token"`
-	ExpiresIn              int64  `json:"expires_in"`
-	XRefreshTokenExpiresIn int64  `json:"x_refresh_token_expires_in"`
-	realmID                string `json:"-"`
-	api                    *api   `json:"-"`
-}
-
 type api struct {
-	environment                        ENV
-	client                             *http.Client
-	discovery                          *Discovery
-	clientID, clientSecret, clientAuth string
+	environment                     ENV
+	client                          *http.Client
+	discovery                       *Discovery
+	clientId, clientSecret, realmId string
 }
 
 var discoveries map[ENV]*Discovery = map[ENV]*Discovery{}
 
-func NewClient(clientID, clientSecret string, environment ENV) (*api, error) {
-	authStr := base64.StdEncoding.EncodeToString([]byte(clientID + ":" + clientSecret))
+func NewClient(clientId, clientSecret, realmId string, environment ENV) (*api, error) {
 	var disco *Discovery
 	if d, ok := discoveries[environment]; ok {
 		disco = d
@@ -52,7 +41,7 @@ func NewClient(clientID, clientSecret string, environment ENV) (*api, error) {
 		}
 
 		var d Discovery
-		err = deserialize[*Discovery](response, &d)
+		err = deserialize(response, &d)
 		if err != nil {
 			return nil, err
 		}
@@ -61,21 +50,22 @@ func NewClient(clientID, clientSecret string, environment ENV) (*api, error) {
 	}
 	return &api{
 		environment:  environment,
-		clientID:     clientID,
+		clientId:     clientId,
 		clientSecret: clientSecret,
-		clientAuth:   authStr,
 		discovery:    disco,
 		client:       &http.Client{},
+		realmId:      realmId,
 	}, nil
 }
 
-func (c *api) Refresh(realm string, token *RefreshToken) (*RefreshToken, error) {
+func (c *api) Refresh(token *RefreshToken) (*RefreshToken, error) {
+	authStr := base64.StdEncoding.EncodeToString([]byte(c.clientId + ":" + c.clientSecret))
 	request, err := Request(
 		"POST",
 		c.discovery.TokenEndpoint,
 		nil,
 		map[string]string{
-			"Authorization": "Basic " + c.clientAuth,
+			"Authorization": "Basic " + authStr,
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 		map[string]string{
@@ -90,18 +80,17 @@ func (c *api) Refresh(realm string, token *RefreshToken) (*RefreshToken, error) 
 	}
 
 	var responseToken = &RefreshToken{}
-	err = deserialize[*RefreshToken](response, responseToken)
+	err = deserialize(response, responseToken)
 	if err != nil {
 		return nil, err
 	}
 
 	responseToken.api = c
-	responseToken.realmID = realm
 
 	return responseToken, nil
 }
 
-func deserialize[T any](response *http.Response, ifc T) (e error) {
+func deserialize(response *http.Response, ifc interface{}) (e error) {
 	defer response.Body.Close()
 	defer func() {
 		if r := recover(); r != nil {
@@ -113,14 +102,53 @@ func deserialize[T any](response *http.Response, ifc T) (e error) {
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("body =\n%s\n\n", body)
-
+	fmt.Printf("body = %s\n\n", body)
 	if response.StatusCode != http.StatusOK {
-		return errors.New(string(body))
+		qbe := &QuickbooksError{}
+		if err = json.Unmarshal(body, qbe); err != nil {
+			return err
+		}
+		if reqid, ok := response.Header["Intuit_tid"]; ok && len(reqid) > 0 {
+			fmt.Printf("XXXX\n\n\n")
+			qbe.IntuitTid = reqid[0]
+		}
+		return qbe
 	}
 
 	err = json.Unmarshal(body, ifc)
+	if err != nil {
+		qbe := &QuickbooksError{}
+		err = json.Unmarshal(body, qbe)
+		if err == nil {
+			return qbe
+		}
+		return err
+	}
+
+	return nil
+}
+
+func stringify(ifc interface{}) (s string) {
+	bs, err := json.Marshal(ifc)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("stringify %v\n%s\n", ifc, string(bs))
+	return string(bs)
+}
+
+func (r *RefreshToken) DoRequest(method, uri string, qs, headers, data map[string]string, ifc interface{}) error {
+	request, err := r.Request(method, uri, qs, headers, data)
+	if err != nil {
+		return err
+	}
+
+	response, err := r.api.client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	err = deserialize(response, ifc)
 	if err != nil {
 		return err
 	}
@@ -133,15 +161,12 @@ func (r *RefreshToken) Request(method, uri string, qs, headers, data map[string]
 	if err != nil {
 		return nil, err
 	}
-	u.Path = strings.Replace(uri, "{realmID}", r.realmID, -1)
+	u.Path = strings.Replace(uri, "{realmId}", r.api.realmId, -1)
 
 	if headers == nil {
 		headers = map[string]string{}
 	}
 	headers["Authorization"] = "Bearer " + r.AccessToken
-	if method != "GET" {
-		headers["Content-Type"] = "application/json"
-	}
 	return Request(method, u.String(), qs, headers, data)
 }
 
@@ -150,31 +175,49 @@ func Request(method, uri string, qs, headers, data map[string]string) (*http.Req
 	if err != nil {
 		return nil, err
 	}
+	renderedQS := ""
 	if qs != nil && len(qs) > 0 {
 		qd := url.Values{}
 		for k, v := range qs {
 			qd.Add(k, v)
 		}
-		u.RawQuery = qd.Encode()
+		renderedQS = qd.Encode()
+		u.RawQuery = renderedQS
 	}
 
-	requestData := url.Values{}
+	fmt.Printf("%s %s?%s HTTP/1.0\n", method, uri, renderedQS)
+	var requestBody string
 	if data != nil {
-		for k, v := range data {
-			requestData.Set(k, v)
+		if bod, ok := data["body"]; len(data) == 1 && ok {
+			if _, ok := headers["Content-Type"]; !ok {
+				fmt.Println("Content-Type: application/json")
+				headers["Content-Type"] = "application/json"
+			}
+			requestBody = bod
+		} else {
+			requestData := url.Values{}
+			if data != nil {
+				for k, v := range data {
+					requestData.Set(k, v)
+				}
+			}
+			requestBody = requestData.Encode()
 		}
 	}
 
-	request, err := http.NewRequest(method, u.String(), bytes.NewBufferString(requestData.Encode()))
+	request, err := http.NewRequest(method, u.String(), bytes.NewBufferString(requestBody))
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Accept", "application/json")
+	fmt.Println("Accept: application/json")
 	if headers != nil {
 		for k, v := range headers {
+			fmt.Printf("%s: %s\n", k, v)
 			request.Header.Add(k, v)
 		}
 	}
+	fmt.Printf("%s\n\n", requestBody)
 
 	return request, err
 }
