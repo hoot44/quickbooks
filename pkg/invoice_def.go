@@ -1,6 +1,10 @@
 package quickbooks
 
-type InvoiceLine interface{}
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+)
 
 type SalesItemLine struct {
 	Id                  string `json:",omitempty"`
@@ -50,9 +54,36 @@ type DescriptionOnlyLine struct {
 	Amount      float64
 }
 
-var _ = InvoiceLine(SalesItemLine{})
-var _ = InvoiceLine(SalesItemLine{})
-var _ = InvoiceLine(DescriptionOnlyLine{})
+type InvoiceLineData interface{}
+
+type InvoiceLine struct {
+	*DescriptionOnlyLine
+	*GroupLine
+	*SalesItemLine
+}
+
+func (i *InvoiceLine) UnmarshalJSON(d []byte) error {
+	if bytes.Compare(d, []byte(`null`)) == 0 {
+		return nil
+	}
+	if bytes.Index(d, []byte(`DescriptionOnlyLine`)) > -1 {
+		i.DescriptionOnlyLine = &DescriptionOnlyLine{}
+		return json.Unmarshal(d, &i.DescriptionOnlyLine)
+	}
+	if bytes.Index(d, []byte(`GroupLine`)) > -1 {
+		i.GroupLine = &GroupLine{}
+		return json.Unmarshal(d, &i.GroupLine)
+	}
+	if bytes.Index(d, []byte(`SalesItemLineDetail`)) > -1 {
+		i.SalesItemLine = &SalesItemLine{}
+		return json.Unmarshal(d, &i.SalesItemLine)
+	}
+	return errors.New("unknown invoice line type")
+}
+
+var _ = InvoiceLineData(SalesItemLine{})
+var _ = InvoiceLineData(SalesItemLine{})
+var _ = InvoiceLineData(DescriptionOnlyLine{})
 
 type CreateInvoice struct {
 	CustomerRef *TNameValue

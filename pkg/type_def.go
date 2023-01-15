@@ -1,9 +1,25 @@
 package quickbooks
 
+import "encoding/json"
+
 type TNameValue struct {
-	Value string `json:"value,omitempty"`
-	Name  string `json:"name,omitempty"`
-	Type  string `json:"type,omitempty"`
+	Value string `json:"value"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+}
+
+func (t *TNameValue) UnmarshalJSON(d []byte) error {
+	out := map[string]string{}
+	if err := json.Unmarshal(d, out); err != nil {
+		return err
+	}
+	if t == nil {
+		t = &TNameValue{}
+	}
+	t.Value = out["value"]
+	t.Name = out["name"]
+	t.Type = out["type"]
+	return nil
 }
 
 type TValue struct {

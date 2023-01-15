@@ -7,16 +7,16 @@ import (
 type InvoiceQueryResponse struct {
 	QueryResponse struct {
 		Invoice       []Invoice
-		StartPosition int64
-		MaxResults    int64
-		TotalCount    int64
+		StartPosition uint64 `json:"startPosition"`
+		MaxResults    uint64 `json:"maxResults"`
+		TotalCount    uint64 `json:"totalCount"`
 	}
-	Time string
+	Time string `json:"time"`
 }
 
 type InvoiceGetOrCreateResponse struct {
 	Invoice Invoice
-	Time    string
+	Time    string `json:"time"`
 }
 
 func (i *InvoiceGetOrCreateResponse) yield(err error) (*Invoice, error) {
@@ -42,4 +42,32 @@ func (r *RefreshToken) CreateInvoice(inv *CreateInvoice) (*Invoice, error) {
 		i,
 	)
 	return i.yield(err)
+}
+
+func (r *RefreshToken) GetInvoice(id string) (*Invoice, error) {
+	invoice := &InvoiceGetOrCreateResponse{}
+	err := r.DoRequest(
+		"GET",
+		"/v3/company/{realmId}/invoice/"+id,
+		nil,
+		nil,
+		nil,
+		invoice,
+	)
+	return invoice.yield(err)
+}
+
+func (r *RefreshToken) FullUpdateInvoice(i *Invoice) (*Invoice, error) {
+	inv := &InvoiceGetOrCreateResponse{}
+	err := r.DoRequest(
+		"POST",
+		"/v3/company/{realmId}/invoice",
+		nil,
+		nil,
+		map[string]string{
+			"body": stringify(i),
+		},
+		inv,
+	)
+	return inv.yield(err)
 }
