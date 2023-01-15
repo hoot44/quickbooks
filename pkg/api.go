@@ -116,10 +116,12 @@ func deserialize(response *http.Response, ifc interface{}) (e error) {
 	}
 
 	err = json.Unmarshal(body, ifc)
+	fmt.Printf("err = %+v\n", err)
 	if err != nil {
 		qbe := &QuickbooksError{}
 		err = json.Unmarshal(body, qbe)
-		if err == nil {
+		fmt.Printf("err2 = %+v,qbe=%+v\n", err, qbe)
+		if err == nil && qbe.Error() != "" {
 			return qbe
 		}
 		return err

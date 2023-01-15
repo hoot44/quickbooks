@@ -9,8 +9,9 @@ type QuickbooksError struct {
 		}
 		Type string
 	}
-	Time      string
-	ERror     string `json:"error,omitempty"`
+	Time string
+	// Avoid the function name
+	Err       string `json:"error,omitempty"`
 	IntuitTid string
 }
 
@@ -19,8 +20,8 @@ func (q *QuickbooksError) Error() string {
 		return "??"
 	}
 	if len(q.Fault.Error) == 0 {
-		if q.ERror != "" {
-			return q.ERror
+		if q.Err != "" {
+			return q.Err
 		}
 		return q.Fault.Type
 	}

@@ -1,25 +1,9 @@
 package quickbooks
 
-import "encoding/json"
-
 type TNameValue struct {
 	Value string `json:"value"`
 	Name  string `json:"name"`
 	Type  string `json:"type"`
-}
-
-func (t *TNameValue) UnmarshalJSON(d []byte) error {
-	out := map[string]string{}
-	if err := json.Unmarshal(d, out); err != nil {
-		return err
-	}
-	if t == nil {
-		t = &TNameValue{}
-	}
-	t.Value = out["value"]
-	t.Name = out["name"]
-	t.Type = out["type"]
-	return nil
 }
 
 type TValue struct {
@@ -84,4 +68,34 @@ type TSalesItemLineDetail struct {
 	Qty                  float64     `json:",omitempty"`
 	UnitPrice            float64     `json:",omitempty"`
 	TaxClassificationRef *TNameValue `json:",omitempty"`
+}
+
+type TLinkedTxn struct {
+	TxnId     string `json:",omitempty"`
+	TxnType   string `json:",omitempty"`
+	TxnLineId string `json:",omitempty"`
+}
+
+type TTxnTaxDetail struct {
+	TxnTaxCodeRef *TNameValue `json:",omitempty"`
+	TotalTax      float64     `json:",omitempty"`
+	TaxLine       *[]struct {
+		DetailType    string
+		TaxLineDetail *struct {
+			TaxRateRef          *TNameValue
+			NetAmountTaxable    float64 `json:",omitempty"`
+			PercentBased        bool    `json:",omitempty"`
+			TaxInclusiveAmount  float64 `json:",omitempty"`
+			OverrideDeltaAmount float64 `json:",omitempty"`
+			TaxPercent          float64 `json:",omitempty"`
+		}
+		Amount float64 `json:",omitempty"`
+	}
+}
+
+type TCustomField struct {
+	DefinitionId string
+	StringValue  string `json:",omitempty"`
+	Name         string `json:",omitempty"`
+	Type         string `json:",omitempty"`
 }

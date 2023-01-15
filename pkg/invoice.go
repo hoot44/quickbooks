@@ -6,7 +6,7 @@ import (
 
 type InvoiceQueryResponse struct {
 	QueryResponse struct {
-		Invoice       []Invoice
+		Invoice       []*Invoice
 		StartPosition uint64 `json:"startPosition"`
 		MaxResults    uint64 `json:"maxResults"`
 		TotalCount    uint64 `json:"totalCount"`
