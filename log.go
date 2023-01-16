@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-var logger = &Log{level: 4}
+var logger Loggative = &Log{level: 4}
 
 type Log struct{ level int }
-type Logger interface {
+type Loggative interface {
 	Err(string) // 4
 	Errf(string, ...interface{})
 	Warn(string) // 3
@@ -19,8 +19,6 @@ type Logger interface {
 	Debug(string) // 1
 	Debugf(string, ...interface{})
 }
-
-var _ = Logger(&Log{})
 
 func fmtLog(prefix, data string) {
 	out := prefix
@@ -82,4 +80,8 @@ func (l *Log) Debugf(f string, is ...interface{}) {
 
 func (l *Log) LogLevel(i int) {
 	l.level = i
+}
+
+func SetLogger(l *Loggative) {
+	logger = l
 }
