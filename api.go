@@ -118,6 +118,7 @@ func deserialize(response *http.Response, ifc interface{}) (e error) {
 		qbe := &QuickbooksError{}
 		err = json.Unmarshal(body, qbe)
 		if err == nil && qbe.Error() != "" {
+			logger.Errf("Error response from quickbooks = %s", body)
 			return qbe
 		}
 		return err
