@@ -151,7 +151,7 @@ const (
 )
 
 type Invoice struct {
-	Id                           string
+	Id                           string `json:",omitempty"`
 	Line                         *[]InvoiceLine
 	CustomerRef                  TNameValue
 	SyncToken                    string
