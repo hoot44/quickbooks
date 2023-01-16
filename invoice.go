@@ -29,7 +29,7 @@ func (i *InvoiceGetOrCreateResponse) yield(err error) (*Invoice, error) {
 	return nil, err
 }
 
-func (r *RefreshToken) CreateInvoice(inv *CreateInvoice) (*Invoice, error) {
+func (r *RefreshToken) CreateInvoice(inv *Invoice) (*Invoice, error) {
 	i := &InvoiceGetOrCreateResponse{}
 	err := r.DoRequest(
 		"POST",

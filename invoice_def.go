@@ -142,12 +142,6 @@ var _ = InvoiceLineData(SalesItemLine{})
 var _ = InvoiceLineData(SalesItemLine{})
 var _ = InvoiceLineData(DescriptionOnlyLine{})
 
-type CreateInvoice struct {
-	CustomerRef *TNameValue
-	Line        *[]InvoiceLine
-	CurrencyRef *TNameValue
-}
-
 type GlobalTaxCalculationId string
 
 const (
