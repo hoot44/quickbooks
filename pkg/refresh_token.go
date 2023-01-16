@@ -17,7 +17,7 @@ func (c *RefreshToken) Query(query string, ifc interface{}) error {
 			"query": query,
 		},
 		nil,
-		nil,
+		"",
 		ifc,
 	)
 }

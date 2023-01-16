@@ -36,9 +36,7 @@ func (r *RefreshToken) CreateInvoice(inv *CreateInvoice) (*Invoice, error) {
 		"/v3/company/{realmId}/invoice",
 		nil,
 		nil,
-		map[string]string{
-			"body": stringify(inv),
-		},
+		stringify(inv),
 		i,
 	)
 	return i.yield(err)
@@ -51,7 +49,7 @@ func (r *RefreshToken) GetInvoice(id string) (*Invoice, error) {
 		"/v3/company/{realmId}/invoice/"+id,
 		nil,
 		nil,
-		nil,
+		"",
 		invoice,
 	)
 	return invoice.yield(err)
@@ -64,9 +62,23 @@ func (r *RefreshToken) FullUpdateInvoice(i *Invoice) (*Invoice, error) {
 		"/v3/company/{realmId}/invoice",
 		nil,
 		nil,
-		map[string]string{
-			"body": stringify(i),
-		},
+		stringify(i),
+		inv,
+	)
+	return inv.yield(err)
+}
+
+func (r *RefreshToken) VoidInvoice(id, syncToken string) (*Invoice, error) {
+	if syncToken == "" {
+		syncToken = "1"
+	}
+	inv := &InvoiceGetOrCreateResponse{}
+	err := r.DoRequest(
+		"POST",
+		"/v3/company/{realmId}/invoice",
+		map[string]string{"operation": "void"},
+		nil,
+		stringify(struct{ SyncToken, Id string }{syncToken, id}),
 		inv,
 	)
 	return inv.yield(err)

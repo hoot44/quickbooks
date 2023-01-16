@@ -34,9 +34,7 @@ func (r *RefreshToken) CreateCustomer(c *CreateCustomer) (*Customer, error) {
 		"/v3/company/{realmId}/customer",
 		nil,
 		nil,
-		map[string]string{
-			"body": stringify(c),
-		},
+		stringify(c),
 		customer,
 	)
 	return customer.yield(err)
@@ -49,7 +47,7 @@ func (r *RefreshToken) GetCustomer(id string) (*Customer, error) {
 		"/v3/company/{realmId}/customer/"+id,
 		nil,
 		nil,
-		nil,
+		"",
 		customer,
 	)
 	return customer.yield(err)
@@ -62,9 +60,7 @@ func (r *RefreshToken) FullUpdateCustomer(c *Customer) (*Customer, error) {
 		"/v3/company/{realmId}/customer",
 		nil,
 		nil,
-		map[string]string{
-			"body": stringify(c),
-		},
+		stringify(c),
 		customer,
 	)
 	return customer.yield(err)

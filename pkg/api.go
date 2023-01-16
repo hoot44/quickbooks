@@ -30,7 +30,7 @@ func NewClient(clientId, clientSecret, realmId string, environment ENV) (*api, e
 			string(environment),
 			nil,
 			nil,
-			nil,
+			"",
 		)
 		if err != nil {
 			return nil, err
@@ -68,10 +68,10 @@ func (c *api) Refresh(token *RefreshToken) (*RefreshToken, error) {
 			"Authorization": "Basic " + authStr,
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
-		map[string]string{
+		mapify(map[string]string{
 			"grant_type":    "refresh_token",
 			"refresh_token": token.RefreshToken,
-		},
+		}),
 	)
 
 	response, err := c.client.Do(request)
@@ -94,7 +94,7 @@ func deserialize(response *http.Response, ifc interface{}) (e error) {
 	defer response.Body.Close()
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("recovered %v\n", r)
+			logger.Errf("recovered: %v", r)
 			e = errors.New(fmt.Sprintf("%+v", r))
 		}
 	}()
@@ -102,25 +102,21 @@ func deserialize(response *http.Response, ifc interface{}) (e error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("body = %s\n\n", body)
 	if response.StatusCode != http.StatusOK {
 		qbe := &QuickbooksError{}
 		if err = json.Unmarshal(body, qbe); err != nil {
 			return err
 		}
 		if reqid, ok := response.Header["Intuit_tid"]; ok && len(reqid) > 0 {
-			fmt.Printf("XXXX\n\n\n")
 			qbe.IntuitTid = reqid[0]
 		}
 		return qbe
 	}
 
 	err = json.Unmarshal(body, ifc)
-	fmt.Printf("err = %+v\n", err)
 	if err != nil {
 		qbe := &QuickbooksError{}
 		err = json.Unmarshal(body, qbe)
-		fmt.Printf("err2 = %+v,qbe=%+v\n", err, qbe)
 		if err == nil && qbe.Error() != "" {
 			return qbe
 		}
@@ -135,11 +131,10 @@ func stringify(ifc interface{}) (s string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("stringify %v\n%s\n", ifc, string(bs))
 	return string(bs)
 }
 
-func (r *RefreshToken) DoRequest(method, uri string, qs, headers, data map[string]string, ifc interface{}) error {
+func (r *RefreshToken) DoRequest(method, uri string, qs, headers map[string]string, data string, ifc interface{}) error {
 	request, err := r.Request(method, uri, qs, headers, data)
 	if err != nil {
 		return err
@@ -158,7 +153,15 @@ func (r *RefreshToken) DoRequest(method, uri string, qs, headers, data map[strin
 	return nil
 }
 
-func (r *RefreshToken) Request(method, uri string, qs, headers, data map[string]string) (*http.Request, error) {
+func mapify(body map[string]string) string {
+	requestData := url.Values{}
+	for k, v := range body {
+		requestData.Set(k, v)
+	}
+	return requestData.Encode()
+}
+
+func (r *RefreshToken) Request(method, uri string, qs, headers map[string]string, data string) (*http.Request, error) {
 	u, err := url.Parse("https://sandbox-quickbooks.api.intuit.com")
 	if err != nil {
 		return nil, err
@@ -172,7 +175,7 @@ func (r *RefreshToken) Request(method, uri string, qs, headers, data map[string]
 	return Request(method, u.String(), qs, headers, data)
 }
 
-func Request(method, uri string, qs, headers, data map[string]string) (*http.Request, error) {
+func Request(method, uri string, qs, headers map[string]string, data string) (*http.Request, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -187,39 +190,30 @@ func Request(method, uri string, qs, headers, data map[string]string) (*http.Req
 		u.RawQuery = renderedQS
 	}
 
-	fmt.Printf("%s %s?%s HTTP/1.0\n", method, uri, renderedQS)
-	var requestBody string
-	if data != nil {
-		if bod, ok := data["body"]; len(data) == 1 && ok {
-			if _, ok := headers["Content-Type"]; !ok {
-				fmt.Println("Content-Type: application/json")
-				headers["Content-Type"] = "application/json"
-			}
-			requestBody = bod
-		} else {
-			requestData := url.Values{}
-			if data != nil {
-				for k, v := range data {
-					requestData.Set(k, v)
-				}
-			}
-			requestBody = requestData.Encode()
-		}
-	}
+	dbgStr := fmt.Sprintf("%s %s?%s HTTP/1.0", method, uri, renderedQS)
 
-	request, err := http.NewRequest(method, u.String(), bytes.NewBufferString(requestBody))
+	request, err := http.NewRequest(method, u.String(), bytes.NewBufferString(data))
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Accept", "application/json")
-	fmt.Println("Accept: application/json")
+	dbgStr += ("\nAccept: application/json")
 	if headers != nil {
+		contentType := false
 		for k, v := range headers {
-			fmt.Printf("%s: %s\n", k, v)
+			dbgStr += "\n" + k + ": " + v
+			if strings.ToLower(k) == "content-type" {
+				contentType = true
+			}
 			request.Header.Add(k, v)
 		}
+		if !contentType {
+			dbgStr += "\nContent-Type: application/json"
+			request.Header.Add("Content-Type", "application/json")
+		}
 	}
-	fmt.Printf("%s\n\n", requestBody)
+	dbgStr += "\n" + data
+	logger.Debug(dbgStr)
 
 	return request, err
 }
