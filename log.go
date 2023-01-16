@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-var logger Loggative = &Log{level: 4}
-
 type Log struct{ level int }
 type Loggative interface {
 	Err(string) // 4
@@ -82,6 +80,8 @@ func (l *Log) LogLevel(i int) {
 	l.level = i
 }
 
-func SetLogger(l *Loggative) {
+func SetLogger(l Loggative) {
 	logger = l
 }
+
+var logger Loggative = &Log{level: 4}
