@@ -63,10 +63,10 @@ func (r *RefreshToken) GetCustomer(id string) (*Customer, error) {
 	return customer.yield(err)
 }
 
-func (r *RefreshToken) FetchCustomers(id string) ([]Customer, error) {
+func (r *RefreshToken) FetchCustomers() ([]Customer, error) {
 	cqr := &CustomerQueryResponse{}
 	err := r.DoRequest("POST",
-		"/v3/company/"+id+"/query?query=SELECT * FROM CUSTOMER",
+		"/v3/company/{realmId}/query?query=SELECT * FROM CUSTOMER",
 		nil,
 		nil,
 		"",
