@@ -1,6 +1,9 @@
 package quickbooks
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type CustomerQueryResponse struct {
 	QueryResponse struct {
@@ -13,6 +16,7 @@ type CustomerQueryResponse struct {
 }
 
 func (c *CustomerQueryResponse) yield(err error) ([]Customer, error) {
+	fmt.Printf("%+v\n", c)
 	if err == nil && c != nil {
 		return c.QueryResponse.Customer, nil
 	}
