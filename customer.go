@@ -17,7 +17,6 @@ type CustomerQueryResponse struct {
 }
 
 func (c *CustomerQueryResponse) yield(err error) ([]Customer, error) {
-	fmt.Fprintf(os.Stderr, "response = %+v\n", c)
 	if err == nil && c != nil {
 		return c.QueryResponse.Customer, nil
 	}
@@ -71,13 +70,12 @@ func (r *RefreshToken) GetCustomer(id string) (*Customer, error) {
 func (r *RefreshToken) FetchCustomers() ([]Customer, error) {
 	cqr := &CustomerQueryResponse{}
 	err := r.DoRequest("POST",
-		"/v3/company/{realmId}/query?query=select%20*%20from%20customer",
+		"/v3/company/{realmId}/query?query=select * from customer",
 		nil,
 		nil,
 		"",
 		cqr,
 	)
-	fmt.Fprintf(os.Stderr, "err = %+v\n", err)
 	return cqr.yield(err)
 }
 
