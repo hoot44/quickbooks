@@ -68,8 +68,8 @@ func (r *RefreshToken) GetCustomer(id string) (*Customer, error) {
 func (r *RefreshToken) FetchCustomers() ([]Customer, error) {
 	cqr := &CustomerQueryResponse{}
 	err := r.DoRequest("POST",
-		"/v3/company/{realmId}/query?query=select * from customer",
-		nil,
+		"/v3/company/{realmId}/query",
+		map[string]string{"query": "select * from customer"},
 		nil,
 		"",
 		cqr,
