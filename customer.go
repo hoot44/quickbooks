@@ -16,7 +16,7 @@ type CustomerQueryResponse struct {
 }
 
 func (c *CustomerQueryResponse) yield(err error) ([]Customer, error) {
-	fmt.Printf("%+v\n", c)
+	fmt.Printf("response = %+v\n", c)
 	if err == nil && c != nil {
 		return c.QueryResponse.Customer, nil
 	}
@@ -76,6 +76,7 @@ func (r *RefreshToken) FetchCustomers() ([]Customer, error) {
 		"",
 		cqr,
 	)
+	fmt.Printf("err = %+v\n", err)
 	return cqr.yield(err)
 }
 
