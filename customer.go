@@ -3,6 +3,7 @@ package quickbooks
 import (
 	"errors"
 	"fmt"
+	"os"
 )
 
 type CustomerQueryResponse struct {
@@ -16,7 +17,7 @@ type CustomerQueryResponse struct {
 }
 
 func (c *CustomerQueryResponse) yield(err error) ([]Customer, error) {
-	fmt.Printf("response = %+v\n", c)
+	fmt.Fprintf(os.Stderr, "response = %+v\n", c)
 	if err == nil && c != nil {
 		return c.QueryResponse.Customer, nil
 	}
@@ -76,7 +77,7 @@ func (r *RefreshToken) FetchCustomers() ([]Customer, error) {
 		"",
 		cqr,
 	)
-	fmt.Printf("err = %+v\n", err)
+	fmt.Fprintf(os.Stderr, "err = %+v\n", err)
 	return cqr.yield(err)
 }
 
