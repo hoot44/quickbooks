@@ -2,8 +2,6 @@ package quickbooks
 
 import (
 	"errors"
-	"fmt"
-	"os"
 )
 
 type CustomerQueryResponse struct {
